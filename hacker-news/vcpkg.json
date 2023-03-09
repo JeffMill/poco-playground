@@ -1,0 +1,12 @@
+{
+    "name": "hacker-news",
+    "version-string": "1.0.0",
+    "dependencies": [
+        {
+            "name": "poco",
+            "features": [
+                "netssl"
+            ]
+        }
+    ]
+}
