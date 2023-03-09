@@ -1,6 +1,11 @@
 // Package: Application
 #include <Poco/Util/Application.h>
 
+// Package: Configuration
+#include <Poco/Util/IniFileConfiguration.h>
+#include <Poco/Util/JSONConfiguration.h>
+#include <Poco/Util/LayeredConfiguration.h>
+
 // Package: Core
 #include <Poco/String.h>
 
@@ -72,6 +77,7 @@ private:
 
     std::vector<std::string> ExpandFileArgument(const std::string &file);
     void DisplayHash(const std::string &file);
+    void ReadConfig();
 
     bool arg_binary = false;
     bool arg_check = false;
@@ -118,7 +124,7 @@ void Application::DisplayHash(const std::string &pathName)
     if (file.isDirectory())
     {
 
-        std::cout << "sha256sum: " << path.directory(path.depth() - 1) << ": Is a directory" << std::endl;
+        std::cout << commandName() << ": " << path.directory(path.depth() - 1) << ": Is a directory" << std::endl;
         return;
     }
 
@@ -143,6 +149,54 @@ void Application::DisplayHash(const std::string &pathName)
     }
 }
 
+void Application::ReadConfig()
+{
+    // Default Flags can be specified in JSON configuration
+    Poco::AutoPtr<Poco::Util::LayeredConfiguration> configs(new Poco::Util::LayeredConfiguration);
+
+    // configHome:
+    // On Unix systems, this is the '~/.config/'. On Windows systems,
+    // this is '%APPDATA%' (typically C:\Users\user\AppData\Roaming).
+
+    Poco::Path iniPath;
+    Poco::File iniFile;
+
+    // e.g.
+    // {
+    //   "config": {
+    //     "binary": 1
+    //   }
+    // }
+
+    iniPath = Poco::Path::configHome();
+    iniPath.append(Poco::cat(commandName(), std::string(".json")));
+    iniFile = iniPath;
+    if (iniFile.exists())
+    {
+        configs->add(new Poco::Util::JSONConfiguration(iniPath.toString()));
+    }
+
+    // e.g.
+    // [config]
+    // binary = 1
+
+    iniPath = Poco::Path::configHome();
+    iniPath.append(Poco::cat(commandName(), std::string(".ini")));
+    iniFile = iniPath;
+    if (iniFile.exists())
+    {
+        configs->add(new Poco::Util::IniFileConfiguration(iniPath.toString()));
+    }
+
+    try
+    {
+        arg_binary = configs->getBool("config.binary");
+    }
+    catch (const Poco::NotFoundException &e)
+    {
+    }
+}
+
 int Application::main(const std::vector<std::string> &arguments)
 {
     if (arg_help || arguments.empty())
@@ -157,12 +211,14 @@ int Application::main(const std::vector<std::string> &arguments)
         return EXIT_FAILURE;
     }
 
+    ReadConfig();
+
     for (const std::string &argument : arguments)
     {
         std::vector<std::string> files(ExpandFileArgument(argument));
         if (files.empty())
         {
-            std::cout << "sha256sum: '" << argument << "': No such file or directory" << std::endl;;
+            std::cout << commandName() << ": '" << argument << "': No such file or directory" << std::endl;
             continue;
         }
 

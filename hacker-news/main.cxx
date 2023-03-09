@@ -84,16 +84,58 @@ static std::string InvokeWebRequest(const std::string &uriString)
     return ss.str();
 }
 
+class IdCollection
+{
+public:
+    IdCollection(const std::string &json)
+    {
+        Poco::JSON::Parser parser;
+        Poco::Dynamic::Var objects = parser.parse(json);
+        if (!objects.isArray() || objects.size() != 1)
+        {
+            throw Poco::InvalidArgumentException("Expecting one JSON array");
+        }
+
+        Poco::JSON::Array::Ptr jsonArray = objects[0].extract<Poco::JSON::Array::Ptr>();
+
+        // Convert JSON array to ids stack
+        for (const auto &item : *jsonArray)
+        {
+            unsigned int id;
+            item.convert(id);
+            ids_.push(id);
+        }
+    }
+
+    // Synchronized access to ids. Returns false if no more items.
+    bool Next(unsigned int &id)
+    {
+        bool success = false;
+        Poco::Mutex::ScopedLock lock(mutex_);
+        if (!ids_.empty())
+        {
+            id = ids_.top();
+            ids_.pop();
+            success = true;
+        }
+        return success;
+    }
+
+private:
+    Poco::Mutex mutex_;
+    std::stack<unsigned int> ids_;
+};
+
 class Worker : public Poco::Runnable
 {
 public:
-    Worker(std::stack<unsigned int> &ids) : _ids(ids) {}
+    Worker(IdCollection &ids) : ids_(ids) {}
 
     virtual void run()
     {
         std::string ITEM_URL_BASE{"https://hacker-news.firebaseio.com/v0/item/"};
         unsigned int id;
-        while (Next(id))
+        while (ids_.Next(id))
         {
             const std::string uri{Poco::cat(ITEM_URL_BASE, std::to_string(id), std::string(".json"))};
 
@@ -127,24 +169,9 @@ public:
     }
 
 private:
-    bool Next(unsigned int &id)
-    {
-        bool success = false;
-        Poco::Mutex::ScopedLock lock(Worker::mutex);
-        if (!_ids.empty())
-        {
-            id = _ids.top();
-            _ids.pop();
-            success = true;
-        }
-        return success;
-    }
-
-    static Poco::Mutex mutex;
-    std::stack<unsigned int> &_ids;
+    Poco::Mutex mutex;
+    IdCollection &ids_;
 };
-
-/* static */ Poco::Mutex Worker::mutex;
 
 class Application : public Poco::Util::Application
 {
@@ -156,34 +183,16 @@ int Application::main(const std::vector<std::string> &arguments)
 {
     // e.g. [35056379,35060298,35062007,35060438,35060273,35055121,35056548,35056094,35060972]
     const std::string response{InvokeWebRequest("https://hacker-news.firebaseio.com/v0/topstories.json")};
-
-    Poco::JSON::Parser parser;
-    Poco::Dynamic::Var objects = parser.parse(response);
-    if (!objects.isArray() || objects.size() != 1)
-    {
-        std::cerr << "Expecting one array from topstories" << std::endl;
-        return 1;
-    }
-
-    Poco::JSON::Array::Ptr jsonArray = objects[0].extract<Poco::JSON::Array::Ptr>();
-
-    // Convert JSON array to ids stack
-    std::stack<unsigned int> ids;
-    for (const auto &item : *jsonArray)
-    {
-        unsigned int id;
-        item.convert(id);
-        ids.push(id);
-    }
+    IdCollection collection(response);
 
     // Start threads
     std::vector<Poco::SharedPtr<Worker>> runnables;
     for (unsigned i = 0; i < 8; ++i)
-	{
-        Poco::SharedPtr<Worker> worker(new Worker(ids));
-		runnables.push_back(worker);
+    {
+        Poco::SharedPtr<Worker> worker(new Worker(collection));
+        runnables.push_back(worker);
         Poco::ThreadPool::defaultPool().start(*worker);
-	}
+    }
 
     // Wait for workers to complete
     Poco::ThreadPool::defaultPool().joinAll();
