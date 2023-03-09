@@ -17,6 +17,10 @@
 #include <Poco/File.h>
 #include <Poco/Glob.h>
 
+// Package: Logging
+#include <Poco/Logger.h>
+#include <Poco/SimpleFileChannel.h>
+
 // Package: Options
 #include <Poco/Util/HelpFormatter.h>
 #include <Poco/Util/Option.h>
@@ -199,14 +203,26 @@ void Application::ReadConfig()
 
 int Application::main(const std::vector<std::string> &arguments)
 {
+    Poco::AutoPtr<Poco::SimpleFileChannel> channel(new Poco::SimpleFileChannel);
+    channel->setProperty("path", "sha256sum.log");
+    channel->setProperty("rotation", "2 K");
+    Poco::Logger::root().setChannel(channel);
+    Poco::Logger &log = Poco::Logger::get("TestLogger");
+
+    log.information("app started");
+
     if (arg_help || arguments.empty())
     {
+        log.warning("help requested");
+
         ShowHelpMessage();
         return EXIT_USAGE;
     }
 
     if (arg_check)
     {
+        log.fatal("check requested");
+
         std::cerr << "check not yet implemented." << std::endl;
         return EXIT_FAILURE;
     }
@@ -224,6 +240,8 @@ int Application::main(const std::vector<std::string> &arguments)
 
         for (const std::string &file : files)
         {
+            log.information(Poco::cat(std::string("file: "), file));
+
             if (!arg_check)
             {
                 DisplayHash(file);
@@ -234,6 +252,7 @@ int Application::main(const std::vector<std::string> &arguments)
         }
     }
 
+    log.information("app ended");
     return EXIT_OK;
 }
 
