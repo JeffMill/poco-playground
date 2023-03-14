@@ -5,8 +5,10 @@
 #include <Poco/Util/IniFileConfiguration.h>
 #include <Poco/Util/JSONConfiguration.h>
 #include <Poco/Util/LayeredConfiguration.h>
+#include <Poco/Util/SystemConfiguration.h>
 
 // Package: Core
+#include <Poco/NestedDiagnosticContext.h>
 #include <Poco/String.h>
 
 // Package: Crypt
@@ -123,12 +125,19 @@ std::vector<std::string> Application::ExpandFileArgument(const std::string &file
 
 void Application::DisplayHash(const std::string &pathName)
 {
+    poco_ndc(DisplayHash);
+
     Poco::Path path(pathName);
     Poco::File file(path);
     if (file.isDirectory())
     {
-
         std::cout << commandName() << ": " << path.directory(path.depth() - 1) << ": Is a directory" << std::endl;
+
+        std::stringstream ss;
+        ss << std::endl
+           << "Context:" << std::endl;
+        Poco::NDC::current().dump(ss);
+        std::cout << ss.str() << std::endl;
         return;
     }
 
@@ -203,8 +212,11 @@ void Application::ReadConfig()
 
 int Application::main(const std::vector<std::string> &arguments)
 {
+    poco_ndc(main);
+
     Poco::AutoPtr<Poco::SimpleFileChannel> channel(new Poco::SimpleFileChannel);
-    channel->setProperty("path", "sha256sum.log");
+    Poco::Path logDir(Poco::Path::tempHome(), "sha256sum.log");
+    channel->setProperty("path", logDir.toString());
     channel->setProperty("rotation", "2 K");
     Poco::Logger::root().setChannel(channel);
     Poco::Logger &log = Poco::Logger::get("TestLogger");
