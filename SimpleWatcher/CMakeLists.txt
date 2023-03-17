@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(SimpleWatcher CXX)
+project(SimpleWatcher LANGUAGES C CXX)
 
 # target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 set(CMAKE_CXX_STANDARD 11)
