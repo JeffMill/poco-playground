@@ -91,7 +91,7 @@ protected:
 
     int main(const std::vector<std::string> &args)
     {
-        unsigned short port = config().getUInt("HTTPTimeServer.port", 9999);
+        unsigned short port = config().getUInt("FortuneServer.port", 9999);
 
         // The server takes ownership of the HTTPRequstHandlerFactory
         Poco::Net::HTTPServer server(new FortuneRequestHandlerFactory, port);
