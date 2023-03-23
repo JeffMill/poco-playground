@@ -60,6 +60,7 @@ class FortuneRequestHandlerFactory : public Poco::Net::HTTPRequestHandlerFactory
 public:
     Poco::Net::HTTPRequestHandler *createRequestHandler(const Poco::Net::HTTPServerRequest &request)
     {
+        // Ideally, would check getMethod() as well.
         if (request.getURI() == "/")
         {
             return new FortuneRequestHandler;
