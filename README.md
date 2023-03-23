@@ -128,7 +128,7 @@ Use gdb. `catch throw` might catch C++ exceptions at source.
 POCO includes samples as well.  Enlist in the POCO repo:
 
 ```PowerShell
-git clone https://github.com/pocoproject/poco.git`
+git clone https://github.com/pocoproject/poco.git
 ```
 
 then search for the projects:
