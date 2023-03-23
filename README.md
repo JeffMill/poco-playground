@@ -123,6 +123,20 @@ Use gdb. `catch throw` might catch C++ exceptions at source.
 
 [namespace Net](https://docs.pocoproject.org/current/Poco.Net.html)
 
+### POCO samples
+
+POCO includes samples as well.  Enlist in the POCO repo:
+
+```PowerShell
+git clone https://github.com/pocoproject/poco.git`
+```
+
+then search for the projects:
+
+```PowerShell
+Get-ChildItem -Recurse -Directory | Select-Object FullName | Where-Object FullName -like '*\samples\*\src'
+```
+
 ### VCPKG Manifest Mode
 
 [Manifest Mode](https://learn.microsoft.com/en-us/vcpkg/users/manifests)
@@ -130,3 +144,4 @@ Use gdb. `catch throw` might catch C++ exceptions at source.
 [vcpkg.json Reference](https://learn.microsoft.com/en-us/vcpkg/reference/vcpkg-json)
 
 [Manifest mode: CMake example](https://learn.microsoft.com/en-us/vcpkg/examples/manifest-mode-cmake)
+
